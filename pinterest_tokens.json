@@ -1,0 +1,11 @@
+{
+  "access_token": "pina_AEA5O5IXACYKYBAAGAAGKDW5CCF5XGQBACGSPDIQVINQS7IZKE2G7UCCXWHCLVM2RX7VQUI36CVRF5RHEWV4GIUIGX3MRXIA",
+  "refresh_token": "pinr.eyJhbGciOiJSUzI1NiIsInNpZyI6MSwidHlwZSI6IkpXVCIsInZlciI6MX0=.eyJjbGllbnRfaWQiOjE1Mzc0OTUsImV4cCI6NTE4NDAwMCwiaWF0IjoxNzY0NjE5OTE1LCJuYmYiOjE3NjQ2MTk5MTUsInN1YiI6MTAzNzIzNTQ5NTMzNzUwMzkyMH0=.pbHKZAvX-FVMPG0YV6iS0nNiQEAU4xb-g0eSqEp6GS7D9n7ArGJLnEMYxG-7V8vfpXUG-51Ayjw0Em2PCb0vDagFNedl4SVtjsPmUzNf0Z-dcne_8EuSRgKeVVA4SnlYiJuLTyVdipPCwI8rOPyKWOOUj95rScoOp3b-a2bctWugWjy85e9FdJ70iAp_o7BBKfkSCg2ZissOCODpbJ77BcJgF7-ml5tLT0XDc_6x97nxqgZRBGtXr4f0ZS3c-rA6-PKb76arvNi0yE1ewJ-whu6n-AEzUSWYSVp4Guss8PILKHjdu9HChXYRxW47oOKiOLiYQbcw7mGjhv9Qt9iMEw==",
+  "response_type": "authorization_code",
+  "token_type": "bearer",
+  "expires_in": 2592000,
+  "refresh_token_expires_in": 5184000,
+  "scope": "ads:read ads:write",
+  "refresh_token_expires_at": 1769803915,
+  "obtained_at": 1764619915
+}
