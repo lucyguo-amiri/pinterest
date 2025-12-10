@@ -1,9 +1,13 @@
-name: Pinterest Daily Data Fetch (with Cloud Storage)
+name: Pinterest Daily Data Fetch
 
 on:
   schedule:
+    # Runs every day at 2 AM UTC (adjust timezone as needed)
     - cron: '0 2 * * *'
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
+
+permissions:
+  contents: write  # Required to push commits back to repository
 
 jobs:
   fetch-pinterest-data:
@@ -12,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,10 +28,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install requests pandas python-dotenv flask
-          # Uncomment based on your storage choice:
-          # pip install gspread oauth2client  # For Google Sheets
-          # pip install boto3  # For AWS S3
-          # pip install google-cloud-storage  # For Google Cloud Storage
       
       - name: Create .env file from secrets
         run: |
@@ -43,16 +45,7 @@ jobs:
         run: |
           python3 pinterest_reports.py
       
-      # OPTION 3: Commit to Git (default)
-      - name: Commit and push updated data
-        if: true  # Set to false if using cloud storage instead
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add pinterest_ytd_country_data.csv pinterest_country_historical.csv
-          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Pinterest data - $(date +'%Y-%m-%d')" && git push)
-      
-      - name: Upload CSV artifacts (always available)
+      - name: Upload CSV artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pinterest-data-${{ github.run_number }}
@@ -61,15 +54,16 @@ jobs:
             pinterest_country_historical.csv
           retention-days: 90
       
-      - name: Send notification on success
-        if: success()
+      - name: Commit and push updated data
         run: |
-          echo "✅ Pinterest data fetch completed successfully"
-          echo "Date: $(date)"
-          echo "Run number: ${{ github.run_number }}"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add pinterest_ytd_country_data.csv pinterest_country_historical.csv
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Pinterest data - $(date +'%Y-%m-%d')" && git push)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Send notification on failure
+      - name: Notify on failure
         if: failure()
         run: |
-          echo "::error::Pinterest data fetch failed"
-          # You could add Slack/email notifications here
+          echo "::error::Pinterest data fetch failed. Check the logs for details."
