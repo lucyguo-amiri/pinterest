@@ -1,0 +1,75 @@
+name: Pinterest Daily Data Fetch (with Cloud Storage)
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch-pinterest-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas python-dotenv flask
+          # Uncomment based on your storage choice:
+          # pip install gspread oauth2client  # For Google Sheets
+          # pip install boto3  # For AWS S3
+          # pip install google-cloud-storage  # For Google Cloud Storage
+      
+      - name: Create .env file from secrets
+        run: |
+          echo "PINTEREST_CLIENT_ID=${{ secrets.PINTEREST_CLIENT_ID }}" >> .env
+          echo "PINTEREST_CLIENT_SECRET=${{ secrets.PINTEREST_CLIENT_SECRET }}" >> .env
+          echo "PINTEREST_REDIRECT_URI=${{ secrets.PINTEREST_REDIRECT_URI }}" >> .env
+          echo "PINTEREST_AD_ACCOUNT_ID=${{ secrets.PINTEREST_AD_ACCOUNT_ID }}" >> .env
+          echo "PINTEREST_SCOPES=${{ secrets.PINTEREST_SCOPES }}" >> .env
+      
+      - name: Create pinterest_tokens.json from secret
+        run: |
+          echo '${{ secrets.PINTEREST_TOKENS_JSON }}' > pinterest_tokens.json
+      
+      - name: Run Pinterest data fetch
+        run: |
+          python3 pinterest_reports.py
+      
+      # OPTION 3: Commit to Git (default)
+      - name: Commit and push updated data
+        if: true  # Set to false if using cloud storage instead
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add pinterest_ytd_country_data.csv pinterest_country_historical.csv
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update Pinterest data - $(date +'%Y-%m-%d')" && git push)
+      
+      - name: Upload CSV artifacts (always available)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinterest-data-${{ github.run_number }}
+          path: |
+            pinterest_ytd_country_data.csv
+            pinterest_country_historical.csv
+          retention-days: 90
+      
+      - name: Send notification on success
+        if: success()
+        run: |
+          echo "✅ Pinterest data fetch completed successfully"
+          echo "Date: $(date)"
+          echo "Run number: ${{ github.run_number }}"
+      
+      - name: Send notification on failure
+        if: failure()
+        run: |
+          echo "::error::Pinterest data fetch failed"
+          # You could add Slack/email notifications here
