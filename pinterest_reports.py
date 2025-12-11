@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 import json
 
 from pinterest_oauth import get_pinterest_token
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
 load_dotenv()
 
@@ -16,6 +18,62 @@ PINTEREST_BASE_URL = "https://api.pinterest.com/v5"
 ACCESS_TOKEN = get_pinterest_token()
 AD_ACCOUNT_ID = os.environ["PINTEREST_AD_ACCOUNT_ID"]
 
+def upload_df_to_google_sheet(
+    df: pd.DataFrame,
+    sheet_id: str,
+    sheet_tab: str = "Pinterest_Country"
+):
+    """
+    Upload a DataFrame to a Google Sheet.
+
+    Expects:
+      - GOOGLE_SERVICE_ACCOUNT_JSON in env (full JSON key as a string)
+      - sheet_id: Google Sheet ID
+      - sheet_tab: Sheet/tab name to write into
+    """
+    service_account_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if not service_account_json:
+        raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON env var is not set")
+
+    # Parse service account JSON from env
+    info = json.loads(service_account_json)
+    creds = service_account.Credentials.from_service_account_info(
+        info,
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ],
+    )
+
+    service = build("sheets", "v4", credentials=creds)
+    sheet = service.spreadsheets()
+
+    # Convert df to list-of-lists, with header
+    df_for_upload = df.copy()
+    # Replace NaN with empty string so Sheets doesn't get "nan"
+    df_for_upload = df_for_upload.astype(object).where(pd.notnull(df_for_upload), "")
+
+    values = [df_for_upload.columns.tolist()] + df_for_upload.values.tolist()
+
+    # Clear existing data in the tab
+    clear_range = f"{sheet_tab}!A:Z"
+    sheet.values().clear(
+        spreadsheetId=sheet_id,
+        range=clear_range,
+        body={}
+    ).execute()
+
+    # Write new data starting at A1
+    body = {"values": values}
+    write_range = f"{sheet_tab}!A1"
+    sheet.values().update(
+        spreadsheetId=sheet_id,
+        range=write_range,
+        valueInputOption="RAW",
+        body=body
+    ).execute()
+
+    print(f"✅ Uploaded {len(df_for_upload)} rows to Google Sheet '{sheet_tab}' ({sheet_id})")
 
 def _headers():
     return {
@@ -346,6 +404,19 @@ if __name__ == "__main__":
                 # Append to historical data file
                 print(f"\n📚 Building historical dataset...")
                 df_historical = append_to_historical_data(df_country)
+                print(f"   Historical date range: {df_historical['date'].min()} to {df_historical['date'].max()}")
+
+                # ================================
+                # Upload to Google Sheets 🔼
+                # ================================
+                google_sheet_id = os.environ.get("GOOGLE_SHEET_ID")
+                google_sheet_tab = os.environ.get("GOOGLE_SHEET_TAB", "Pinterest_Country")
+
+                if google_sheet_id:
+                    print(f"\n📤 Uploading historical data to Google Sheet...")
+                    upload_df_to_google_sheet(df_historical, google_sheet_id, google_sheet_tab)
+                else:
+                    print("\n⚠️ GOOGLE_SHEET_ID not set – skipping Google Sheets upload.")
                 print(f"   Historical date range: {df_historical['date'].min()} to {df_historical['date'].max()}")
             else:
                 print(f"\n⚠️ No country column found")
