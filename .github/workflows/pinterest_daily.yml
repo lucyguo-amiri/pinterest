@@ -27,7 +27,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests pandas python-dotenv flask
+          pip install requests pandas python-dotenv flask \
+                     google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
       
       - name: Create .env file from secrets
         run: |
@@ -42,6 +43,10 @@ jobs:
           echo '${{ secrets.PINTEREST_TOKENS_JSON }}' > pinterest_tokens.json
       
       - name: Run Pinterest data fetch
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SHEET_TAB: "Paid Metrics By Country"
         run: |
           python3 pinterest_reports.py
       
