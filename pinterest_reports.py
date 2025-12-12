@@ -292,7 +292,7 @@ def build_daily_paid_metrics_by_country(df_historical: pd.DataFrame) -> pd.DataF
 
     # Optional: sort for readability
     agg_df = agg_df.sort_values(by=["date", "country_code", "campaign_type"])
-
+    agg_df["platform"] = "Pinterest Paid"
     return agg_df
 
 if __name__ == "__main__":
