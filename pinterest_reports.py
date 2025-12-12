@@ -248,11 +248,11 @@ def build_daily_paid_metrics_by_country(df_historical: pd.DataFrame) -> pd.DataF
     # Ensure required columns exist
     required_cols = ["date", "country", "campaign_name"]
     metric_candidates = {
-        "impressions": ["impressions", "IMPRESSION_1", "IMPRESSION_1_GROSS"],
-        "clicks": ["clicks", "CLICKTHROUGH_1"],
+        "impressions": ["IMPRESSION_1"],
+        "clicks": ["clicks"],
         "spend": ["spend"],  # you already derive this from micro dollars
-        "checkouts": ["checkouts", "TOTAL_CHECKOUT"],
-        "checkout_value": ["checkout_value", "TOTAL_CHECKOUT_VALUE_IN_DOLLAR"],
+        "checkouts": ["checkouts"],
+        "checkout_value": ["checkout_value"],
     }
 
     for col in required_cols:
