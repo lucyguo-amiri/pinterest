@@ -233,6 +233,67 @@ def append_to_historical_data(new_df: pd.DataFrame, historical_file: str = "pint
     
     return combined_df
 
+def build_daily_paid_metrics_by_country(df_historical: pd.DataFrame) -> pd.DataFrame:
+    """
+    From pinterest_country_historical, build a daily aggregated dataset:
+
+      - Group by date, campaign_type, country_code
+      - campaign_type: 'Awareness' if campaign_name contains 'AWR' (case-insensitive), else 'Conversion'
+      - country_code: original 'country' column
+      - Metrics: sum of impressions, clicks, spend, checkouts, checkout_value
+    """
+
+    df = df_historical.copy()
+
+    # Ensure required columns exist
+    required_cols = ["date", "country", "campaign_name"]
+    metric_candidates = {
+        "impressions": ["impressions", "IMPRESSION_1", "IMPRESSION_1_GROSS"],
+        "clicks": ["clicks", "CLICKTHROUGH_1"],
+        "spend": ["spend"],  # you already derive this from micro dollars
+        "checkouts": ["checkouts", "TOTAL_CHECKOUT"],
+        "checkout_value": ["checkout_value", "TOTAL_CHECKOUT_VALUE_IN_DOLLAR"],
+    }
+
+    for col in required_cols:
+        if col not in df.columns:
+            raise ValueError(f"Expected column '{col}' not found in df_historical")
+
+    # Map possible metric column names to canonical names if needed
+    col_map = {}
+    for canonical, candidates in metric_candidates.items():
+        for c in candidates:
+            if c in df.columns:
+                col_map[canonical] = c
+                break
+
+    missing_metrics = [m for m in metric_candidates.keys() if m not in col_map]
+    if missing_metrics:
+        raise ValueError(f"Missing metric columns in df_historical for: {missing_metrics}")
+
+    # Derive campaign_type from campaign_name (ILIKE '%AWR%')
+    df["campaign_type"] = df["campaign_name"].str.contains("AWR", case=False, na=False).map(
+        {True: "Awareness", False: "Conversion"}
+    )
+
+    # Rename for clarity
+    df["country_code"] = df["country"]
+
+    # Group by date, campaign_type, country_code
+    group_cols = ["date", "campaign_type", "country_code"]
+
+    agg_df = df.groupby(group_cols, as_index=False).agg(
+        impression=(col_map["impressions"], "sum"),
+        clicks=(col_map["clicks"], "sum"),
+        spend=(col_map["spend"], "sum"),
+        purchase=(col_map["checkouts"], "sum"),
+        revenue=(col_map["checkout_value"], "sum"),
+    )
+
+    # Optional: sort for readability
+    agg_df = agg_df.sort_values(by=["date", "country_code", "campaign_type"])
+
+    return agg_df
 
 if __name__ == "__main__":
     try:
@@ -415,6 +476,20 @@ if __name__ == "__main__":
                     upload_df_to_google_sheet(df_historical, google_sheet_id, google_sheet_tab)
                 else:
                     print("\n⚠️ GOOGLE_SHEET_ID not set – skipping Google Sheets upload.")
+                # ================================
+                # Build daily aggregated metrics by country
+                # ================================
+                if google_sheet_id:
+                    print(f"\n📊 Building Daily Paid Metrics By Country...")
+                    df_daily = build_daily_paid_metrics_by_country(df_historical)
+                    print(f"   Daily rows: {len(df_daily)}")
+
+                    # Upload aggregated daily metrics to a separate tab
+                    daily_tab_name = "Daily Paid Metrics By Country"
+                    print(f"\n📤 Uploading daily metrics to Google Sheet tab '{daily_tab_name}'...")
+                    upload_df_to_google_sheet(df_daily, google_sheet_id, daily_tab_name)
+                else:
+                    print("\n⚠️ GOOGLE_SHEET_ID not set – skipping Daily Paid Metrics By Country upload.")
             else:
                 print(f"\n⚠️ No country column found")
                 print(f"Available columns: {list(df_country.columns)}")
